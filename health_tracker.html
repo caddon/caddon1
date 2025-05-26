@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(() => console.log('Service Worker Registered'));
+        }
+    </script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Health Data Tracker</title>
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+        
+        .tab {
+            background: #f8f9fa;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .data-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .data-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e1e5e9;
+        }
+        
+        .data-table th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .photo-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        .delete-btn {
+            background: #dc3545;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+        }
+        
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .export-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 30px;
+        }
+    
+        .styled-button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .styled-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🏥 Health Data Tracker</h1>
+<div class="tabs">
+<button class="tab styled-button" onclick="showTab('weight')">Weight</button>
+<button class="tab styled-button" onclick="showTab('workout')">Workouts</button>
+<button class="tab styled-button" onclick="showTab('calories')">Calories</button>
+<button class="tab styled-button" onclick="showTab('steps')">Steps</button>
+<button class="tab styled-button" onclick="showTab('sleep')">Sleep</button>
+<button class="tab styled-button" onclick="showTab('photos')">Photos</button>
+<button class="tab styled-button" onclick="showTab('view')">View Data</button>
+</div>
+<!-- Weight Tab -->
+<div class="tab-content active" id="weight">
+<h2>Weight Tracking</h2>
+<form onsubmit="addWeight(event)">
+<div class="form-group">
+<label for="weight-date">Date:</label>
+<input id="weight-date" required="" type="date"/>
+</div>
+<div class="form-group">
+<label for="weight-value">Weight (lbs/kg):</label>
+<input id="weight-value" required="" step="0.1" type="number"/>
+</div>
+<div class="form-group">
+<label for="weight-notes">Notes:</label>
+<textarea id="weight-notes" rows="3"></textarea>
+</div>
+<button type="submit">Add Weight Entry</button>
+</form>
+<div id="weight-confirm" style="margin-top: 10px; font-size: 14px; color: green; font-weight: bold;"></div></div>
+<!-- Workout Tab -->
+<div class="tab-content" id="workout">
+<h2>Workout Tracking</h2>
+<form onsubmit="addWorkout(event)">
+<div class="form-group">
+<label for="workout-date">Date:</label>
+<input id="workout-date" required="" type="date"/>
+</div>
+<div class="form-group">
+<label for="workout-type">Workout Type:</label>
+<select id="workout-type" required="">
+<option value="">Select type</option>
+<option value="Cardio">Cardio</option>
+<option value="Strength">Strength Training</option>
+<option value="Yoga">Yoga</option>
+<option value="Running">Running</option>
+<option value="Cycling">Cycling</option>
+<option value="Swimming">Swimming</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div class="form-group">
+<label for="workout-duration">Duration (minutes):</label>
+<input id="workout-duration" required="" type="number"/>
+</div>
+<div class="form-group">
+<label for="workout-intensity">Intensity (1-10):</label>
+<input id="workout-intensity" max="10" min="1" required="" type="number"/>
+</div>
+<div class="form-group">
+<label for="workout-calories">Calories Burned:</label>
+<input id="workout-calories" type="number"/>
+</div>
+<div class="form-group">
+<label for="workout-notes">Workout Details:</label>
+<textarea id="workout-notes" rows="4"></textarea>
+</div>
+<button type="submit">Add Workout</button>
+</form>
+</div>
+<!-- Calories Tab -->
+<div class="tab-content" id="calories">
+<h2>Calorie Tracking</h2>
+<form onsubmit="addCalories(event)">
+<div class="form-group">
+<label for="calorie-date">Date:</label>
+<input id="calorie-date" required="" type="date"/>
+</div>
+<div class="form-group">
+<label for="calorie-intake">Calories Consumed:</label>
+<input id="calorie-intake" required="" type="number"/>
+</div>
+<div class="form-group">
+<label for="calorie-burned">Calories Burned (Exercise):</label>
+<input id="calorie-burned" type="number"/>
+</div>
+<div class="form-group">
+<label for="calorie-meals">Meals/Foods:</label>
+<textarea id="calorie-meals" placeholder="Breakfast: oatmeal, banana
+Lunch: salad, chicken
+Dinner: pasta, vegetables" rows="4"></textarea>
+</div>
+<button type="submit">Add Calorie Entry</button>
+</form>
+</div>
+<!-- Steps Tab -->
+<div class="tab-content" id="steps">
+<h2>Steps Tracking</h2>
+<form onsubmit="addSteps(event)">
+<div class="form-group">
+<label for="steps-date">Date:</label>
+<input id="steps-date" required="" type="date"/>
+</div>
+<div class="form-group">
+<label for="steps-count">Step Count:</label>
+<input id="steps-count" required="" type="number"/>
+</div>
+<div class="form-group">
+<label for="steps-distance">Distance (miles/km):</label>
+<input id="steps-distance" step="0.1" type="number"/>
+</div>
+<div class="form-group">
+<label for="steps-active">Active Minutes:</label>
+<input id="steps-active" type="number"/>
+</div>
+<button type="submit">Add Steps Entry</button>
+</form>
+</div>
+<!-- Sleep Tab -->
+<div class="tab-content" id="sleep">
+<h2>Sleep Tracking</h2>
+<form onsubmit="addSleep(event)">
+<div class="form-group">
+<label for="sleep-date">Date:</label>
+<input id="sleep-date" required="" type="date"/>
+</div>
+<div class="form-group">
+<label for="sleep-bedtime">Bedtime:</label>
+<input id="sleep-bedtime" required="" type="time"/>
+</div>
+<div class="form-group">
+<label for="sleep-waketime">Wake Time:</label>
+<input id="sleep-waketime" required="" type="time"/>
+</div>
+<div class="form-group">
+<label for="sleep-quality">Sleep Quality (1-10):</label>
+<input id="sleep-quality" max="10" min="1" required="" type="number"/>
+</div>
+<div class="form-group">
+<label for="sleep-notes">Sleep Notes:</label>
+<textarea id="sleep-notes" placeholder="How did you feel? Any interruptions?" rows="3"></textarea>
+</div>
+<button type="submit">Add Sleep Entry</button>
+</form>
+</div>
+<!-- Photos Tab -->
+<div class="tab-content" id="photos">
+<h2>Progress Photos</h2>
+<form onsubmit="addPhoto(event)">
+<div class="form-group">
+<label for="photo-date">Date:</label>
+<input id="photo-date" required="" type="date"/>
+</div>
+<div class="form-group">
+<label for="photo-type">Photo Type:</label>
+<select id="photo-type" required="">
+<option value="">Select type</option>
+<option value="Progress">Progress Photo</option>
+<option value="Meal">Meal Photo</option>
+<option value="Workout">Workout Photo</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div class="form-group">
+<label for="photo-file">Upload Photo:</label>
+<input accept="image/*" id="photo-file" required="" type="file"/>
+</div>
+<div class="form-group">
+<label for="photo-description">Description:</label>
+<textarea id="photo-description" rows="3"></textarea>
+</div>
+<button type="submit">Add Photo</button>
+</form>
+</div>
+<!-- View Data Tab -->
+<div class="tab-content" id="view">
+<h2>Your Health Data</h2>
+<div class="stats">
+<div class="stat-card">
+<div class="stat-number" id="total-entries">0</div>
+<div>Total Entries</div>
+</div>
+<div class="stat-card">
+<div class="stat-number" id="latest-weight">-</div>
+<div>Latest Weight</div>
+</div>
+<div class="stat-card">
+<div class="stat-number" id="avg-steps">0</div>
+<div>Avg Daily Steps</div>
+</div>
+<div class="stat-card">
+<div class="stat-number" id="total-workouts">0</div>
+<div>Total Workouts</div>
+</div>
+</div>
+<div class="export-section">
+<h3>Data Management</h3>
+<button onclick="exportData('json')">Export as JSON</button>
+<button onclick="exportData('csv')">Export as CSV</button>
+<button onclick="manualBackup()">💾 Manual Backup</button>
+<button onclick="document.getElementById('import-file').click()">📁 Import Data</button>
+<input accept=".json" id="import-file" onchange="importData(event)" style="display:none" type="file"/>
+<button onclick="clearAllData()">🗑️ Clear All Data</button>
+<p style="margin-top: 10px; font-size: 14px; color: #666;">
+                    🚀 <strong>Smart Auto-Import:</strong> The app will ask to load your recent backup when you start.<br/>
+                    🔄 <strong>Auto-backup:</strong> Data automatically backs up when closing and every 10 minutes.
+                </p>
+</div>
+<div id="data-display"></div>
+</div>
+</div>
+<script>
+        // Data storage object
+        let healthData = {
+            weight: [],
+            workouts: [],
+            calories: [],
+            steps: [],
+            sleep: [],
+            photos: []
+        };
+
+        // Load data from memory on page load
+        function loadData() {
+            // This version uses in-memory storage only
+            // Data will be lost when browser is closed
+            // Use export function to save your data permanently
+            updateStats();
+            displayData();
+        }
+
+        // Tab switching functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+
+            // Set today's date for new entries
+            setTodaysDate(tabName);
+
+            // Refresh data display if viewing data tab
+            if (tabName === 'view') {
+                updateStats();
+                displayData();
+            }
+        }
+
+        function setTodaysDate(tabName) {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInputs = document.querySelectorAll(`#${tabName} input[type="date"]`);
+            dateInputs.forEach(input => {
+                if (!input.value) input.value = today;
+            });
+        }
+
+        // Weight tracking functions
+        function addWeight(event) {
+            event.preventDefault();
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('weight-date').value,
+                weight: parseFloat(document.getElementById('weight-value').value),
+                notes: document.getElementById('weight-notes').value
+            };
+            
+            healthData.weight.push(entry);
+            markDataChanged();
+            event.target.reset();
+            setTodaysDate('weight');
+            document.getElementById('weight-confirm').textContent = '✅ Weight entry added successfully!';
+        }
+
+        // Workout tracking functions
+        function addWorkout(event) {
+            event.preventDefault();
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('workout-date').value,
+                type: document.getElementById('workout-type').value,
+                duration: parseInt(document.getElementById('workout-duration').value),
+                intensity: parseInt(document.getElementById('workout-intensity').value),
+                calories: parseInt(document.getElementById('workout-calories').value) || 0,
+                notes: document.getElementById('workout-notes').value
+            };
+            
+            healthData.workouts.push(entry);
+            markDataChanged();
+            event.target.reset();
+            setTodaysDate('workout');
+            alert('Workout added successfully!');
+        }
+
+        // Calorie tracking functions
+        function addCalories(event) {
+            event.preventDefault();
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('calorie-date').value,
+                intake: parseInt(document.getElementById('calorie-intake').value),
+                burned: parseInt(document.getElementById('calorie-burned').value) || 0,
+                meals: document.getElementById('calorie-meals').value
+            };
+            
+            healthData.calories.push(entry);
+            markDataChanged();
+            event.target.reset();
+            setTodaysDate('calories');
+            alert('Calorie entry added successfully!');
+        }
+
+        // Steps tracking functions
+        function addSteps(event) {
+            event.preventDefault();
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('steps-date').value,
+                steps: parseInt(document.getElementById('steps-count').value),
+                distance: parseFloat(document.getElementById('steps-distance').value) || 0,
+                activeMinutes: parseInt(document.getElementById('steps-active').value) || 0
+            };
+            
+            healthData.steps.push(entry);
+            markDataChanged();
+            event.target.reset();
+            setTodaysDate('steps');
+            alert('Steps entry added successfully!');
+        }
+
+        // Sleep tracking functions
+        function addSleep(event) {
+            event.preventDefault();
+            const bedtime = document.getElementById('sleep-bedtime').value;
+            const waketime = document.getElementById('sleep-waketime').value;
+            
+            // Calculate sleep duration
+            const bedDate = new Date(`2000-01-01 ${bedtime}`);
+            let wakeDate = new Date(`2000-01-01 ${waketime}`);
+            if (wakeDate < bedDate) {
+                wakeDate.setDate(wakeDate.getDate() + 1);
+            }
+            const duration = (wakeDate - bedDate) / (1000 * 60 * 60); // hours
+            
+            const entry = {
+                id: Date.now(),
+                date: document.getElementById('sleep-date').value,
+                bedtime: bedtime,
+                waketime: waketime,
+                duration: Math.round(duration * 10) / 10,
+                quality: parseInt(document.getElementById('sleep-quality').value),
+                notes: document.getElementById('sleep-notes').value
+            };
+            
+            healthData.sleep.push(entry);
+            markDataChanged();
+            event.target.reset();
+            setTodaysDate('sleep');
+            alert('Sleep entry added successfully!');
+        }
+
+        // Photo tracking functions
+        function addPhoto(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('photo-file');
+            const file = fileInput.files[0];
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const entry = {
+                        id: Date.now(),
+                        date: document.getElementById('photo-date').value,
+                        type: document.getElementById('photo-type').value,
+                        description: document.getElementById('photo-description').value,
+                        imageData: e.target.result,
+                        fileName: file.name
+                    };
+                    
+                    healthData.photos.push(entry);
+                    markDataChanged();
+                    event.target.reset();
+                    setTodaysDate('photos');
+                    alert('Photo added successfully!');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalEntries = Object.values(healthData).reduce((sum, arr) => sum + arr.length, 0);
+            document.getElementById('total-entries').textContent = totalEntries;
+
+            // Latest weight
+            const weights = healthData.weight.sort((a, b) => new Date(b.date) - new Date(a.date));
+            document.getElementById('latest-weight').textContent = weights.length > 0 ? weights[0].weight : '-';
+
+            // Average steps
+            const avgSteps = healthData.steps.length > 0 
+                ? Math.round(healthData.steps.reduce((sum, entry) => sum + entry.steps, 0) / healthData.steps.length)
+                : 0;
+            document.getElementById('avg-steps').textContent = avgSteps.toLocaleString();
+
+            // Total workouts
+            document.getElementById('total-workouts').textContent = healthData.workouts.length;
+        }
+
+        // Display data in tables
+        function displayData() {
+            const container = document.getElementById('data-display');
+            container.innerHTML = '';
+
+            Object.keys(healthData).forEach(category => {
+                if (healthData[category].length > 0) {
+                    const section = document.createElement('div');
+                    section.className = 'data-card';
+                    section.innerHTML = `
+                        <h3>${category.charAt(0).toUpperCase() + category.slice(1)} (${healthData[category].length} entries)</h3>
+                        ${createTable(category, healthData[category])}
+                    `;
+                    container.appendChild(section);
+                }
+            });
+        }
+
+        function createTable(category, data) {
+            if (data.length === 0) return '<p>No data available</p>';
+
+            const sortedData = data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            const headers = Object.keys(sortedData[0]).filter(key => key !== 'id');
+
+            let tableHTML = '<table class="data-table"><thead><tr>';
+            headers.forEach(header => {
+                tableHTML += `<th>${header.charAt(0).toUpperCase() + header.slice(1)}</th>`;
+            });
+            tableHTML += '<th>Actions</th></tr></thead><tbody>';
+
+            sortedData.forEach(entry => {
+                tableHTML += '<tr>';
+                headers.forEach(header => {
+                    let value = entry[header];
+                    if (header === 'imageData') {
+                        value = `<img src="${value}" class="photo-preview" alt="Health photo">`;
+                    } else if (typeof value === 'string' && value.length > 50) {
+                        value = value.substring(0, 50) + '...';
+                    }
+                    tableHTML += `<td>${value || '-'}</td>`;
+                });
+                tableHTML += `<td><button class="delete-btn" onclick="deleteEntry('${category}', ${entry.id})">Delete</button></td>`;
+                tableHTML += '</tr>';
+            });
+
+            tableHTML += '</tbody></table>';
+            return tableHTML;
+        }
+
+        function deleteEntry(category, id) {
+            if (confirm('Are you sure you want to delete this entry?')) {
+                healthData[category] = healthData[category].filter(entry => entry.id !== id);
+                markDataChanged();
+                updateStats();
+                displayData();
+            }
+        }
+
+        // Export functions
+        function exportData(format) {
+            if (format === 'json') {
+                const dataStr = JSON.stringify(healthData, null, 2);
+                downloadFile(dataStr, 'health-data.json', 'application/json');
+            } else if (format === 'csv') {
+                let csvContent = '';
+                
+                Object.keys(healthData).forEach(category => {
+                    if (healthData[category].length > 0) {
+                        csvContent += `\n${category.toUpperCase()}\n`;
+                        const headers = Object.keys(healthData[category][0]).filter(key => key !== 'id' && key !== 'imageData');
+                        csvContent += headers.join(',') + '\n';
+                        
+                        healthData[category].forEach(entry => {
+                            const row = headers.map(header => {
+                                let value = entry[header] || '';
+                                if (typeof value === 'string' && value.includes(',')) {
+                                    value = `"${value}"`;
+                                }
+                                return value;
+                            });
+                            csvContent += row.join(',') + '\n';
+                        });
+                    }
+                });
+                
+                downloadFile(csvContent, 'health-data.csv', 'text/csv');
+            }
+        }
+
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Import data function
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        // Validate the data structure
+                        const expectedKeys = ['weight', 'workouts', 'calories', 'steps', 'sleep', 'photos'];
+                        const hasValidStructure = expectedKeys.every(key => 
+                            importedData.hasOwnProperty(key) && Array.isArray(importedData[key])
+                        );
+                        
+                        if (hasValidStructure) {
+                            if (confirm('This will replace all current data. Continue?')) {
+                                healthData = importedData;
+                                hasUnsavedChanges = false; // Reset since we just loaded data
+                                updateStats();
+                                displayData();
+                                alert('Data imported successfully!');
+                            }
+                        } else {
+                            alert('Invalid file format. Please select a valid health data JSON file.');
+                        }
+                    } catch (error) {
+                        alert('Error reading file. Please make sure it\'s a valid JSON file.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear ALL data? This cannot be undone.')) {
+                healthData = {
+                    weight: [],
+                    workouts: [],
+                    calories: [],
+                    steps: [],
+                    sleep: [],
+                    photos: []
+                };
+                updateStats();
+                displayData();
+                alert('All data cleared successfully!');
+            }
+        }
+
+        // Auto-backup functionality
+        let hasUnsavedChanges = false;
+        let lastBackupTime = Date.now();
+
+        // Check for recent backup files on startup
+        async function checkForRecentBackup() {
+            // Ask user if they want to load previous data
+            const shouldLoad = confirm('Would you like to load your most recent health data backup?\n\nClick OK to select your backup file, or Cancel to start fresh.');
+            
+            if (shouldLoad) {
+                // Create and trigger file input
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.multiple = false;
+                
+                input.onchange = async function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        await importBackupFile(file);
+                    }
+                    // Clean up
+                    document.body.removeChild(input);
+                };
+                
+                input.oncancel = function() {
+                    document.body.removeChild(input);
+                };
+                
+                // Add to DOM and trigger click
+                input.style.display = 'none';
+                document.body.appendChild(input);
+                
+                alert("Please click the 'Import Data' button in the 'View Data' tab to upload your backup file.");
+                showTab('view');
+            }
+        }
+
+        // Import backup file function
+        async function importBackupFile(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        
+                        // Validate the data structure
+                        const expectedKeys = ['weight', 'workouts', 'calories', 'steps', 'sleep', 'photos'];
+                        const hasValidStructure = expectedKeys.every(key => 
+                            importedData.hasOwnProperty(key) && Array.isArray(importedData[key])
+                        );
+                        
+                        if (hasValidStructure) {
+                            healthData = importedData;
+                            hasUnsavedChanges = false;
+                            updateStats();
+                            displayData();
+                            
+                            // Show success message with data summary
+                            const totalEntries = Object.values(healthData).reduce((sum, arr) => sum + arr.length, 0);
+                            alert(`✅ Data loaded successfully!\n\nLoaded ${totalEntries} total entries:\n` +
+                                  `• Weight: ${healthData.weight.length} entries\n` +
+                                  `• Workouts: ${healthData.workouts.length} entries\n` +
+                                  `• Calories: ${healthData.calories.length} entries\n` +
+                                  `• Steps: ${healthData.steps.length} entries\n` +
+                                  `• Sleep: ${healthData.sleep.length} entries\n` +
+                                  `• Photos: ${healthData.photos.length} entries`);
+                            resolve(true);
+                        } else {
+                            alert('❌ Invalid backup file format. Starting with empty data.');
+                            resolve(false);
+                        }
+                    } catch (error) {
+                        alert('❌ Error reading backup file. Starting with empty data.');
+                        resolve(false);
+                    }
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        // Track when data changes
+        function markDataChanged() {
+            hasUnsavedChanges = true;
+        }
+
+        // Auto-backup function
+        function autoBackup() {
+            if (hasUnsavedChanges) {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                const filename = `health-data-backup-${timestamp}.json`;
+                const dataStr = JSON.stringify(healthData, null, 2);
+                downloadFile(dataStr, filename, 'application/json');
+                hasUnsavedChanges = false;
+                lastBackupTime = Date.now();
+                console.log('Auto-backup saved:', filename);
+            }
+        }
+
+        // Periodic auto-backup (every 10 minutes if there are changes)
+        setInterval(() => {
+            if (hasUnsavedChanges && (Date.now() - lastBackupTime > 10 * 60 * 1000)) {
+                autoBackup();
+            }
+        }, 60000); // Check every minute
+
+        // Backup before page unload
+        window.addEventListener('beforeunload', function(e) {
+            if (hasUnsavedChanges) {
+                // Try to backup automatically
+                autoBackup();
+                
+                // Show warning message
+                const message = 'You have unsaved health data. An automatic backup will be downloaded.';
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        });
+
+        // Manual backup button
+        function manualBackup() {
+            autoBackup();
+            alert('Manual backup saved!');
+        }
+
+        // Initialize the app
+        window.onload = function() {
+            // First load basic setup
+            loadData();
+            setTodaysDate('weight');
+            
+            // Reset unsaved changes flag on load
+            hasUnsavedChanges = false;
+            
+            // Check for recent backup after a short delay to ensure page is fully loaded
+            setTimeout(() => {
+                checkForRecentBackup();
+            }, 1500);
+        };
+    </script>
+</body>
+</html>
